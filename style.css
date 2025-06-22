@@ -128,6 +128,75 @@ p {
     opacity: 0;
 }
 
+/* Motivation display */
+.motivation-display {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+#motivationText {
+    font-size: 1.2rem;
+    font-weight: 500;
+    text-align: center;
+    margin: 0;
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    line-height: 1.4;
+}
+
+.motivation-display.new-quote {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+}
+
+/* Screen shake animation */
+@keyframes screenShake {
+    0% { transform: translate(0); }
+    10% { transform: translate(-2px, -1px); }
+    20% { transform: translate(2px, 1px); }
+    30% { transform: translate(-1px, 2px); }
+    40% { transform: translate(1px, -2px); }
+    50% { transform: translate(-2px, 1px); }
+    60% { transform: translate(2px, -1px); }
+    70% { transform: translate(-1px, -2px); }
+    80% { transform: translate(1px, 2px); }
+    90% { transform: translate(-2px, -1px); }
+    100% { transform: translate(0); }
+}
+
+.screen-shake {
+    animation: screenShake 0.5s ease-in-out;
+}
+
+/* Enhanced button animations for multiple sounds */
+.big-red-button.sound-1 {
+    box-shadow: 
+        0 15px 35px rgba(255, 71, 87, 0.4),
+        inset 0 5px 20px rgba(255, 255, 255, 0.3);
+}
+
+.big-red-button.sound-2 {
+    box-shadow: 
+        0 15px 35px rgba(255, 165, 0, 0.4),
+        inset 0 5px 20px rgba(255, 255, 255, 0.3);
+}
+
+.big-red-button.sound-3 {
+    box-shadow: 
+        0 15px 35px rgba(138, 43, 226, 0.4),
+        inset 0 5px 20px rgba(255, 255, 255, 0.3);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .big-red-button {
@@ -145,5 +214,15 @@ p {
     
     .container {
         padding: 1rem;
+    }
+    
+    .motivation-display {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        min-height: 60px;
+    }
+    
+    #motivationText {
+        font-size: 1rem;
     }
 } 

@@ -1,9 +1,46 @@
-// Initialize click counter
+// Initialize click counter and sound tracker
 let clickCount = 0;
+let currentSoundIndex = 0;
 
 // Get DOM elements
 const bigRedButton = document.getElementById('bigRedButton');
 const clickCountElement = document.getElementById('clickCount');
+const motivationText = document.getElementById('motivationText');
+const body = document.body;
+
+// Motivational quotes array
+const motivationalQuotes = [
+    "You're doing amazing! 🌟",
+    "Keep clicking, you're unstoppable! 🚀",
+    "Each click brings you closer to greatness! ⭐",
+    "You've got this! Click on! 💪",
+    "Fantastic clicking skills! 🎯",
+    "You're on fire! 🔥",
+    "Incredible persistence! 🏆",
+    "Your dedication is inspiring! ✨",
+    "Master clicker in action! 🎮",
+    "You're breaking records! 📈",
+    "Phenomenal clicking power! ⚡",
+    "You're a clicking legend! 👑",
+    "Outstanding performance! 🎊",
+    "Your focus is unmatched! 🎪",
+    "Absolutely brilliant! 🌈",
+    "You're crushing it! 💎",
+    "Spectacular clicking! 🎨",
+    "You're in the zone! 🎵",
+    "Magnificent work! 🦄",
+    "You're a clicking champion! 🏅",
+    "Extraordinary dedication! 🌙",
+    "You're setting the standard! 📏",
+    "Impressive consistency! ⚖️",
+    "You're a natural! 🍀",
+    "Remarkable persistence! 🗻",
+    "You're making magic happen! ✨",
+    "Incredible rhythm! 🥁",
+    "You're a clicking artist! 🎭",
+    "Pure determination! 🔨",
+    "You're reaching new heights! 🏔️"
+];
 
 // Audio context for generating click sound
 let audioContext;
@@ -15,12 +52,23 @@ function initAudioContext() {
     }
 }
 
-// Generate a satisfying click sound using Web Audio API
+// Generate multiple satisfying click sounds using Web Audio API
 function playClickSound() {
     if (!audioContext) {
         initAudioContext();
     }
 
+    // Cycle through different sound types
+    const soundTypes = [
+        { type: 'pop', freq: 800, endFreq: 400, wave: 'square' },
+        { type: 'boing', freq: 600, endFreq: 1200, wave: 'sine' },
+        { type: 'click', freq: 1000, endFreq: 200, wave: 'triangle' },
+        { type: 'ping', freq: 1500, endFreq: 1500, wave: 'sine' },
+        { type: 'thunk', freq: 300, endFreq: 150, wave: 'square' }
+    ];
+
+    const currentSound = soundTypes[currentSoundIndex];
+    
     // Create oscillator for the click sound
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -29,24 +77,46 @@ function playClickSound() {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    // Configure the click sound - a short, sharp sound
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // High pitch
-    oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1); // Drop to lower pitch
+    // Configure the click sound based on current sound type
+    oscillator.frequency.setValueAtTime(currentSound.freq, audioContext.currentTime);
+    
+    if (currentSound.type === 'boing') {
+        // Boing sound goes up in pitch
+        oscillator.frequency.exponentialRampToValueAtTime(currentSound.endFreq, audioContext.currentTime + 0.15);
+    } else if (currentSound.type === 'ping') {
+        // Ping sound stays at same pitch
+        oscillator.frequency.setValueAtTime(currentSound.endFreq, audioContext.currentTime + 0.1);
+    } else {
+        // Most sounds drop in pitch
+        oscillator.frequency.exponentialRampToValueAtTime(currentSound.endFreq, audioContext.currentTime + 0.1);
+    }
 
-    // Configure volume envelope for a "pop" effect
+    // Configure volume envelope based on sound type
+    const duration = currentSound.type === 'boing' ? 0.15 : 0.1;
+    const maxGain = currentSound.type === 'thunk' ? 0.4 : 0.3;
+    
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01); // Quick attack
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1); // Quick decay
+    gainNode.gain.linearRampToValueAtTime(maxGain, audioContext.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
 
-    // Set oscillator type for a punchy sound
-    oscillator.type = 'square';
+    // Set oscillator type
+    oscillator.type = currentSound.wave;
 
     // Play the sound
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
+    oscillator.stop(audioContext.currentTime + duration);
 
-    // Add a second layer for richness - a brief noise burst
-    createNoiseClick();
+    // Add visual feedback for sound type
+    bigRedButton.classList.remove('sound-1', 'sound-2', 'sound-3');
+    bigRedButton.classList.add(`sound-${(currentSoundIndex % 3) + 1}`);
+
+    // Add noise layer for certain sounds
+    if (currentSound.type === 'pop' || currentSound.type === 'click') {
+        createNoiseClick();
+    }
+
+    // Cycle to next sound
+    currentSoundIndex = (currentSoundIndex + 1) % soundTypes.length;
 }
 
 // Create a brief noise click for added texture
@@ -91,6 +161,14 @@ function handleButtonClick() {
     // Play click sound
     playClickSound();
 
+    // Show motivational quote
+    showMotivationalQuote();
+
+    // Add screen shake effect (every 5th click or randomly 10% of the time)
+    if (clickCount % 5 === 0 || Math.random() < 0.1) {
+        triggerScreenShake();
+    }
+
     // Add visual feedback animations
     bigRedButton.classList.add('clicked');
     bigRedButton.classList.add('ripple');
@@ -108,6 +186,29 @@ function handleButtonClick() {
     if (clickCount % 10 === 0) {
         celebrateClickMilestone();
     }
+}
+
+// Show random motivational quote
+function showMotivationalQuote() {
+    const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+    motivationText.textContent = randomQuote;
+    
+    // Add visual effect to motivation display
+    const motivationDisplay = motivationText.parentElement;
+    motivationDisplay.classList.add('new-quote');
+    
+    setTimeout(() => {
+        motivationDisplay.classList.remove('new-quote');
+    }, 1000);
+}
+
+// Trigger screen shake effect
+function triggerScreenShake() {
+    body.classList.add('screen-shake');
+    
+    setTimeout(() => {
+        body.classList.remove('screen-shake');
+    }, 500);
 }
 
 // Celebrate milestone clicks with extra effects
