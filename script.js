@@ -2,6 +2,10 @@
 let clickCount = 0;
 let currentSoundIndex = 0;
 
+// Rapid click detection
+let clickTimestamps = [];
+let rapidClickAudio = null;
+
 // Get DOM elements
 const bigRedButton = document.getElementById('bigRedButton');
 const clickCountElement = document.getElementById('clickCount');
@@ -42,114 +46,102 @@ const motivationalQuotes = [
     "You're reaching new heights! 🏔️"
 ];
 
-// Audio context for generating click sound
-let audioContext;
+// Audio files for button clicks
+let audioFiles = [];
+let audioLoaded = false;
 
-// Initialize audio context on first user interaction
-function initAudioContext() {
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-}
-
-// Generate multiple satisfying click sounds using Web Audio API
-function playClickSound() {
-    if (!audioContext) {
-        initAudioContext();
-    }
-
-    // Cycle through different sound types
-    const soundTypes = [
-        { type: 'pop', freq: 800, endFreq: 400, wave: 'square' },
-        { type: 'boing', freq: 600, endFreq: 1200, wave: 'sine' },
-        { type: 'click', freq: 1000, endFreq: 200, wave: 'triangle' },
-        { type: 'ping', freq: 1500, endFreq: 1500, wave: 'sine' },
-        { type: 'thunk', freq: 300, endFreq: 150, wave: 'square' }
+// Initialize audio files
+function initAudioFiles() {
+    const soundFiles = [
+        'sounds/filadapulta-jovirone.mp3'
+        // Add more normal sound files here as you add them to the sounds folder
     ];
 
-    const currentSound = soundTypes[currentSoundIndex];
-    
-    // Create oscillator for the click sound
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    audioFiles = soundFiles.map(file => {
+        const audio = new Audio(file);
+        audio.preload = 'auto';
+        audio.volume = 0.7; // Adjust volume as needed
+        return audio;
+    });
 
-    // Connect nodes
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    // Initialize the special rapid click sound
+    rapidClickAudio = new Audio('sounds/para-caralho.mp3');
+    rapidClickAudio.preload = 'auto';
+    rapidClickAudio.volume = 0.8; // Slightly louder for special effect
 
-    // Configure the click sound based on current sound type
-    oscillator.frequency.setValueAtTime(currentSound.freq, audioContext.currentTime);
-    
-    if (currentSound.type === 'boing') {
-        // Boing sound goes up in pitch
-        oscillator.frequency.exponentialRampToValueAtTime(currentSound.endFreq, audioContext.currentTime + 0.15);
-    } else if (currentSound.type === 'ping') {
-        // Ping sound stays at same pitch
-        oscillator.frequency.setValueAtTime(currentSound.endFreq, audioContext.currentTime + 0.1);
-    } else {
-        // Most sounds drop in pitch
-        oscillator.frequency.exponentialRampToValueAtTime(currentSound.endFreq, audioContext.currentTime + 0.1);
+    audioLoaded = true;
+    console.log(`🔊 Loaded ${audioFiles.length} normal sound file(s) and 1 rapid-click sound from the sounds folder!`);
+}
+
+// Play click sounds from the sounds folder
+function playClickSound() {
+    if (!audioLoaded) {
+        initAudioFiles();
     }
 
-    // Configure volume envelope based on sound type
-    const duration = currentSound.type === 'boing' ? 0.15 : 0.1;
-    const maxGain = currentSound.type === 'thunk' ? 0.4 : 0.3;
+    if (audioFiles.length === 0) {
+        console.warn('⚠️ No audio files found in the sounds folder!');
+        return;
+    }
+
+    // Get the current audio file
+    const currentAudio = audioFiles[currentSoundIndex % audioFiles.length];
     
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(maxGain, audioContext.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-
-    // Set oscillator type
-    oscillator.type = currentSound.wave;
-
+    // Reset the audio to the beginning in case it was played before
+    currentAudio.currentTime = 0;
+    
     // Play the sound
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + duration);
+    currentAudio.play().catch(error => {
+        console.error('Error playing sound:', error);
+    });
 
     // Add visual feedback for sound type
     bigRedButton.classList.remove('sound-1', 'sound-2', 'sound-3');
     bigRedButton.classList.add(`sound-${(currentSoundIndex % 3) + 1}`);
 
-    // Add noise layer for certain sounds
-    if (currentSound.type === 'pop' || currentSound.type === 'click') {
-        createNoiseClick();
-    }
-
-    // Cycle to next sound
-    currentSoundIndex = (currentSoundIndex + 1) % soundTypes.length;
+    // Cycle to next sound (if you have multiple files, they'll cycle through)
+    currentSoundIndex = (currentSoundIndex + 1) % Math.max(audioFiles.length, 1);
 }
 
-// Create a brief noise click for added texture
-function createNoiseClick() {
-    const bufferSize = 4096;
-    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-    const data = buffer.getChannelData(0);
+// Remove createNoiseClick function as we're now using actual audio files
 
-    // Generate white noise
-    for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
+// Check for rapid clicking (more than 5 clicks in 1 second)
+function checkRapidClicking() {
+    const now = Date.now();
+    clickTimestamps.push(now);
+    
+    // Remove timestamps older than 1 second
+    clickTimestamps = clickTimestamps.filter(timestamp => now - timestamp <= 1000);
+    
+    // Check if we have more than 5 clicks in the last second
+    if (clickTimestamps.length > 5) {
+        playRapidClickSound();
+        return true;
     }
+    return false;
+}
 
-    const noiseSource = audioContext.createBufferSource();
-    const noiseGain = audioContext.createGain();
-    const noiseFilter = audioContext.createBiquadFilter();
-
-    // Filter the noise to make it more like a click
-    noiseFilter.type = 'highpass';
-    noiseFilter.frequency.setValueAtTime(2000, audioContext.currentTime);
-
-    noiseSource.buffer = buffer;
-    noiseSource.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(audioContext.destination);
-
-    // Quick burst of filtered noise
-    noiseGain.gain.setValueAtTime(0, audioContext.currentTime);
-    noiseGain.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.005);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
-
-    noiseSource.start(audioContext.currentTime);
-    noiseSource.stop(audioContext.currentTime + 0.05);
+// Play the special rapid click sound
+function playRapidClickSound() {
+    if (!rapidClickAudio) return;
+    
+    // Reset and play the special sound
+    rapidClickAudio.currentTime = 0;
+    rapidClickAudio.play().catch(error => {
+        console.error('Error playing rapid click sound:', error);
+    });
+    
+    // Add special visual effect
+    bigRedButton.style.boxShadow = '0 20px 60px rgba(255, 0, 0, 0.8), inset 0 5px 20px rgba(255, 255, 255, 0.5)';
+    bigRedButton.style.transform = 'scale(1.1)';
+    
+    // Reset visual effect after a moment
+    setTimeout(() => {
+        bigRedButton.style.boxShadow = '';
+        bigRedButton.style.transform = '';
+    }, 500);
+    
+    console.log('🔥 RAPID CLICKING DETECTED! Playing special sound!');
 }
 
 // Handle button click
@@ -158,8 +150,13 @@ function handleButtonClick() {
     clickCount++;
     clickCountElement.textContent = clickCount;
 
-    // Play click sound
-    playClickSound();
+    // Check for rapid clicking first
+    const isRapidClick = checkRapidClicking();
+    
+    // Only play normal sound if it's not a rapid click sequence
+    if (!isRapidClick) {
+        playClickSound();
+    }
 
     // Show motivational quote
     showMotivationalQuote();
@@ -233,34 +230,24 @@ function celebrateClickMilestone() {
     setTimeout(() => playBonusSound(), 300);
 }
 
-// Play bonus sound for milestones
+// Play bonus sound for milestones (using the same sound file)
 function playBonusSound() {
-    if (!audioContext) return;
+    if (!audioLoaded || audioFiles.length === 0) return;
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    // Higher, more celebratory sound
-    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(1600, audioContext.currentTime + 0.2);
-
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-
-    oscillator.type = 'sine';
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.2);
+    // Play the first sound file for bonus sounds
+    const bonusAudio = audioFiles[0].cloneNode();
+    bonusAudio.volume = 0.5; // Slightly quieter for bonus sounds
+    bonusAudio.currentTime = 0;
+    bonusAudio.play().catch(error => {
+        console.error('Error playing bonus sound:', error);
+    });
 }
 
 // Add event listener for button clicks
 bigRedButton.addEventListener('click', handleButtonClick);
 
-// Initialize audio context on first user interaction with the page
-document.addEventListener('click', initAudioContext, { once: true });
+// Initialize audio files on first user interaction with the page
+document.addEventListener('click', initAudioFiles, { once: true });
 
 // Add keyboard support (spacebar and enter)
 document.addEventListener('keydown', (event) => {
